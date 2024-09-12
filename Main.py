@@ -5,6 +5,7 @@ import Secrets
 import sqlite3
 from pymongo import MongoClient
 
+
 def main():
     reddit = praw.Reddit(
         client_id=Secrets.secret_info['client_id'],
@@ -14,61 +15,140 @@ def main():
         user_agent=Secrets.secret_info['user_agent']
     )
 
-    # try:
-    #     for saved_item in reddit.user.me().saved(limit=2):
-    #         if isinstance(saved_item, praw.models.Submission):
-    #             print(f"Title: {saved_item.title}")
-    #             print(f"URL: {saved_item.url}\n")
-    #             print(f"PERMA: {saved_item.permalink}\n")
-    #             print(f"Subreddit: {saved_item.subreddit.display_name}\n")
-    #         elif isinstance(saved_item, praw.models.Comment):
-    #             print(f"Comment: {saved_item.body}")
-    #             print(f"Link: {saved_item.link_url}\n")
-    #             print(f"PERMA: {saved_item.permalink}\n")
-    #             print(f"Subreddit: {saved_item.subreddit.display_name}\n")
-    # except Exception as e:
-    #     print(f"An error occurred: {e}")
+    try:
+        for saved_item in reddit.user.me().saved(limit=2):
+            if isinstance(saved_item, praw.models.Submission):
+                print(f"Title: {saved_item.title}")
+                print(f"URL: {saved_item.url}\n")
+                print(f"PERMA: {saved_item.permalink}\n")
+                print(f"Subreddit: {saved_item.subreddit.display_name}\n")
+            elif isinstance(saved_item, praw.models.Comment):
+                print(f"Comment: {saved_item.body}")
+                print(f"Link: {saved_item.link_url}\n")
+                print(f"PERMA: {saved_item.permalink}\n")
+                print(f"Subreddit: {saved_item.subreddit.display_name}\n")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
 
     conn = sqlite3.connect(r"C:\Users\Daibhidh\AppData\Roaming\Mozilla\Firefox\Profiles\wpg9fojf.default-release-1662941926469\places.sqlite")
     cursor = conn.cursor()
 
-    # Check available tables (optional, for your reference)
+
     tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
     print("Tables in SQLite database:", tables)
 
-    # Query to get data from moz_places table (URLs)
-    places_query = "SELECT id FROM moz_bookmarks WHERE title = 'reddit'";
-    cursor.execute(places_query)
-    places_data = cursor.fetchall()
 
-    flattened = [item for sublist in places_data for item in sublist]
+    reddit_bookmarks_query =  f"""
+    SELECT p.url, b.id
+    FROM moz_bookmarks b
+    JOIN moz_places p ON b.fk = p.id
+    WHERE p.url LIKE '%reddit%' AND b.type = 1;
+    """
+    cursor.execute(reddit_bookmarks_query)
+    all_reddit_bookmarks = cursor.fetchall()
 
-    urls = []
-    for id in flattened:
-        urls_of_reddit_bookmarks_query =  f"""
-        SELECT p.url
-        FROM moz_bookmarks b
-        JOIN moz_places p ON b.fk = p.id
-        WHERE b.parent = {id} AND b.type != 2;
-        """
-        cursor.execute(urls_of_reddit_bookmarks_query)
-        booked_urls = cursor.fetchall()
+        # urls.extend([url[0] for url in booked_urls])
 
-        urls.extend([url[0] for url in booked_urls])
+    cleaned_reddit_bookmarks = list(set(all_reddit_bookmarks))
 
-    urls = list(set(urls))
-    url_with_sub = []
+    bookmarks_dict = [{'url': bookmark[0], 'id': bookmark[1]} for bookmark in cleaned_reddit_bookmarks]
 
-    for url1 in urls:
+    count = 0
+
+    for bookmark in bookmarks_dict:
         try:
-            search_results = reddit.submission(url=url1)
+            search_results = reddit.submission(url=bookmark['url'])
             sub_name = search_results.subreddit.display_name
-            url_with_sub.append({"url": url1, "sub": sub_name})
+            bookmark['sub'] = sub_name
 
             count += 1
             print(count)
         except:
-            print(f"{url1} is not available")
+            print(f"{bookmark['url']} is not available")
+
+    print(bookmarks_dict[0])
+
+    find_reddit_folder_query = "SELECT id FROM moz_bookmarks WHERE title = 'reddit' and type = 2";
+    cursor.execute(find_reddit_folder_query)
+    reddit_folder = cursor.fetchall()
+
+    if reddit_folder:
+        reddit_folder_id = reddit_folder[0][0]
+    else:
+        print("Reddit folder not found.")
+        reddit_folder_id = None
+
+    for bookmark in bookmarks_dict:
+        try:
+            sub_folder_query = f"""
+                    SELECT b.id
+                    FROM moz_bookmarks b
+                    WHERE b.title = '{bookmark['sub']}' AND b.type = 2
+                    """
+            cursor.execute(sub_folder_query)
+            folder_id = cursor.fetchone()
+
+            if folder_id:
+                folder_id = folder_id[0]
+            else:
+                folder_id = None
+
+            if folder_id:
+                update_query = f"""
+                            UPDATE moz_bookmarks
+                            SET parent = {folder_id}
+                            WHERE id = {bookmark['id']};
+                        """
+                cursor.execute(update_query)
+                conn.commit()
+            else:
+
+                create_folder_query = f"""
+                        INSERT INTO moz_bookmarks (type, fk, parent, position, title, dateAdded, lastModified, guid, syncStatus)
+                        VALUES (
+                            2, 
+                            NULL, 
+                            {reddit_folder_id}, 
+                            (SELECT IFNULL(MAX(position), 0) + 1 FROM moz_bookmarks WHERE parent = {reddit_folder_id}), 
+                            '{bookmark['sub'].replace("'", "''")}', 
+                            strftime('%s', 'now') * 1000000, 
+                            strftime('%s', 'now') * 1000000, 
+                            hex(randomblob(12)), 
+                            1
+                        );
+                    """
+
+                print("Executing Create Folder Query:\n", create_folder_query)  # Debugging: print the query
+                cursor.execute(create_folder_query)
+                conn.commit()
+
+                # Fetch the newly created folder ID
+                sub_folder_query = f"""
+                        SELECT b.id
+                        FROM moz_bookmarks b
+                        WHERE b.title = '{bookmark['sub'].replace("'", "''")}' AND b.type = 2;
+                    """
+                cursor.execute(sub_folder_query)
+                folder_id = cursor.fetchone()
+
+                if folder_id:
+                    folder_id = folder_id[0]
+                    update_query = f"""
+                            UPDATE moz_bookmarks
+                            SET parent = {folder_id}
+                            WHERE id = {bookmark['id']};
+                            """
+                    cursor.execute(update_query)
+                    conn.commit()
+                else:
+                    print(f"Failed to create or find the folder for {bookmark['sub']}.")
+        except Exception as e:
+            print(f"An error occurred while updating or creating bookmarks: {e}")
+    # finally:
+    #     if conn:
+    #         conn.close()
 
 
 
