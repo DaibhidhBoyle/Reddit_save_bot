@@ -5,6 +5,20 @@ import Secrets
 import sqlite3
 from pymongo import MongoClient
 
+from selenium import webdriver
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
+import time
+
+import pyautogui
+
 
 def main():
     reddit = praw.Reddit(
@@ -15,6 +29,7 @@ def main():
         user_agent=Secrets.secret_info['user_agent']
     )
 
+    #
     try:
         for saved_item in reddit.user.me().saved(limit=2):
             if isinstance(saved_item, praw.models.Submission):
@@ -29,6 +44,69 @@ def main():
                 print(f"Subreddit: {saved_item.subreddit.display_name}\n")
     except Exception as e:
         print(f"An error occurred: {e}")
+
+    # Correct profile path - ensure it ends with the specific profile folder, not the general path
+    profile_path = r"C:\Users\Daibhidh\AppData\Roaming\Mozilla\Firefox\Profiles\wpg9fojf.default-release-1662941926469"
+
+    # Set up Firefox options to use the specified profile directly
+    options = Options()
+    options.add_argument(f"-profile")
+    options.add_argument(profile_path)
+
+    # Initialize the Firefox driver with the specified options
+    service = FirefoxService()  # Assuming you have the appropriate geckodriver in PATH or specified
+
+    driver = webdriver.Firefox(service=service, options=options)
+
+
+    try:
+        actions = ActionChains(driver)
+        for saved_item in reddit.user.me().saved():
+            url = f"https://new.reddit.com{saved_item.permalink}"
+            print(f"Opening URL: {url}")
+            driver.get(url)
+
+            time.sleep(10)
+
+            try:
+
+                driver.switch_to.window(driver.current_window_handle)
+
+                driver.maximize_window()
+
+                # Interact with the window using pyautogui for bookmarking
+                pyautogui.hotkey('ctrl', 'd')
+
+                # Wait for a second to let the bookmark window appear
+                time.sleep(1)
+
+                # Press Enter to confirm the bookmark
+                pyautogui.press('enter')
+
+                # Wait before closing the browser to see the result
+                time.sleep(5)
+
+                # alert = driver.switch_to.alert
+                # alert.accept()  # Accept or dismiss the alert
+
+                # print("Attempting to bookmark the page...")
+                #
+                #
+                # body = driver.find_element(By.CLASS_NAME, "grid-container")
+                #
+                # # actions.key_down(Keys.CONTROL).pause(1).send_keys('d').key_up(Keys.CONTROL).send_keys(Keys.RETURN).perform()
+                #
+                # actions.context_click(body).send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.RETURN).send_keys(Keys.RETURN).perform()
+                #
+                # print("got here :(")
+                #
+                #
+                # time.sleep(15)
+
+            except Exception as e:
+                print(f"Failed to click the bookmark star: {e}")
+    finally:
+        driver.quit()
 
 
 
