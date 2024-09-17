@@ -1,6 +1,6 @@
 # main.py
 import praw
-import Secrets
+
 
 import sqlite3
 from pymongo import MongoClient
@@ -105,22 +105,6 @@ def main():
                 # Wait before closing the browser to see the result
                 time.sleep(5)
 
-                # alert = driver.switch_to.alert
-                # alert.accept()  # Accept or dismiss the alert
-
-                # print("Attempting to bookmark the page...")
-                #
-                #
-                # body = driver.find_element(By.CLASS_NAME, "grid-container")
-                #
-                # # actions.key_down(Keys.CONTROL).pause(1).send_keys('d').key_up(Keys.CONTROL).send_keys(Keys.RETURN).perform()
-                #
-                # actions.context_click(body).send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.RETURN).send_keys(Keys.RETURN).perform()
-                #
-                # print("got here :(")
-                #
-                #
-                # time.sleep(15)
 
             except Exception as e:
                 print(f"Failed to click the bookmark star: {e}")
@@ -129,6 +113,9 @@ def main():
 
     finally:
         driver.quit()
+
+
+
 
     def check_permalinks_in_db(permalinks_batch):
         # Build the query with multiple LIKE conditions
@@ -157,10 +144,6 @@ def main():
 
     found_urls = set(result[0] for result in results)
 
-    # Step 3: Output the results of matching permalinks
-    # for i, result in results:
-    #     if(result):
-    #         saved_items[i].unsave():
 
     for saved_item in saved_items:
         permalink = saved_item.permalink
@@ -189,8 +172,6 @@ def main():
     """
     cursor.execute(reddit_bookmarks_query)
     all_reddit_bookmarks = cursor.fetchall()
-
-        # urls.extend([url[0] for url in booked_urls])
 
     cleaned_reddit_bookmarks = list(set(all_reddit_bookmarks))
 
