@@ -30,20 +30,20 @@ def main():
     )
 
     #
-    try:
-        for saved_item in reddit.user.me().saved(limit=2):
-            if isinstance(saved_item, praw.models.Submission):
-                print(f"Title: {saved_item.title}")
-                print(f"URL: {saved_item.url}\n")
-                print(f"PERMA: {saved_item.permalink}\n")
-                print(f"Subreddit: {saved_item.subreddit.display_name}\n")
-            elif isinstance(saved_item, praw.models.Comment):
-                print(f"Comment: {saved_item.body}")
-                print(f"Link: {saved_item.link_url}\n")
-                print(f"PERMA: {saved_item.permalink}\n")
-                print(f"Subreddit: {saved_item.subreddit.display_name}\n")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    # try:
+    #     for saved_item in reddit.user.me().saved(limit=2):
+    #         if isinstance(saved_item, praw.models.Submission):
+    #             print(f"Title: {saved_item.title}")
+    #             print(f"URL: {saved_item.url}\n")
+    #             print(f"PERMA: {saved_item.permalink}\n")
+    #             print(f"Subreddit: {saved_item.subreddit.display_name}\n")
+    #         elif isinstance(saved_item, praw.models.Comment):
+    #             print(f"Comment: {saved_item.body}")
+    #             print(f"Link: {saved_item.link_url}\n")
+    #             print(f"PERMA: {saved_item.permalink}\n")
+    #             print(f"Subreddit: {saved_item.subreddit.display_name}\n")
+    # except Exception as e:
+    #     print(f"An error occurred: {e}")
 
     # Correct profile path - ensure it ends with the specific profile folder, not the general path
     profile_path = r"C:\Users\Daibhidh\AppData\Roaming\Mozilla\Firefox\Profiles\wpg9fojf.default-release-1662941926469"
@@ -58,18 +58,37 @@ def main():
 
     driver = webdriver.Firefox(service=service, options=options)
 
+    conn = sqlite3.connect(
+        r"C:\Users\Daibhidh\AppData\Roaming\Mozilla\Firefox\Profiles\wpg9fojf.default-release-1662941926469\places.sqlite")
+    cursor = conn.cursor()
+
+    tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+    print("Tables in SQLite database:", tables)
+
+    saved_items = list(reddit.user.me().saved(limit=None))
+
+    permalinks = []
 
     try:
+
         actions = ActionChains(driver)
-        for saved_item in reddit.user.me().saved():
+        for saved_item in saved_items:
+            permalinks.append(saved_item.permalink)
+
             url = f"https://new.reddit.com{saved_item.permalink}"
+
+
+            if url != "https://new.reddit.com/r/interestingasfuck/comments/ds1nhc/how_to_do_a_backflip_in_under_a_minute/":
+                print("nah" + " " + url)
+                continue
+
+
             print(f"Opening URL: {url}")
             driver.get(url)
 
             time.sleep(10)
 
             try:
-
                 driver.switch_to.window(driver.current_window_handle)
 
                 driver.maximize_window()
@@ -105,24 +124,68 @@ def main():
 
             except Exception as e:
                 print(f"Failed to click the bookmark star: {e}")
+
+
+
     finally:
         driver.quit()
 
+    def check_permalinks_in_db(permalinks_batch):
+        # Build the query with multiple LIKE conditions
+        like_conditions = ' OR '.join([f"p.url LIKE ?" for _ in permalinks_batch])
+        query = (f"""
+        SELECT p.url
+        FROM moz_places p
+        JOIN moz_bookmarks b ON p.id = b.fk 
+        WHERE {like_conditions}
+        """)
+
+        # Format each permalink to include wildcards for partial matching
+        like_patterns = [f"%{url}%" for url in permalinks_batch]
+        cursor.execute(query, like_patterns)
+        return cursor.fetchall()
+
+    # Set a batch size to avoid too many items in one query
+    batch_size = 30
+    results = []
+
+    # Loop through the permalinks in batches
+    for i in range(0, len(permalinks), batch_size):
+        batch = permalinks[i:i + batch_size]
+        batch_results = check_permalinks_in_db(batch)
+        results.extend(batch_results)
+
+    found_urls = set(result[0] for result in results)
+
+    # Step 3: Output the results of matching permalinks
+    # for i, result in results:
+    #     if(result):
+    #         saved_items[i].unsave():
+
+    for saved_item in saved_items:
+        permalink = saved_item.permalink
+        if any(permalink in url for url in found_urls):
+            saved_item.unsave()
+            print(f"Unsaved item: {saved_item.permalink}")
 
 
-    conn = sqlite3.connect(r"C:\Users\Daibhidh\AppData\Roaming\Mozilla\Firefox\Profiles\wpg9fojf.default-release-1662941926469\places.sqlite")
-    cursor = conn.cursor()
 
 
-    tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-    print("Tables in SQLite database:", tables)
+
+
+
+
+
+
+
+
 
 
     reddit_bookmarks_query =  f"""
     SELECT p.url, b.id
     FROM moz_bookmarks b
     JOIN moz_places p ON b.fk = p.id
-    WHERE p.url LIKE '%reddit%' AND b.type = 1;
+    WHERE p.url LIKE '%reddit%' AND b.type = 1 and b.parent = 3;
     """
     cursor.execute(reddit_bookmarks_query)
     all_reddit_bookmarks = cursor.fetchall()
