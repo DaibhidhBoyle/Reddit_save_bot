@@ -1,20 +1,17 @@
-import time
-import pyautogui
-from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.firefox.options import Options
+import pyautogui
+
+import time
 
 class SavedToBookmark:
-    def __init__(self, driver, saved_items):
+    def __init__(self, driver):
         self.driver = driver
-        self.saved_items = saved_items
         self.permalinks = []
         self.actions = ActionChains(driver)
 
-    def process_saved_items(self):
+    def process_saved_items(self, saved_items):
         try:
-            for saved_item in self.saved_items:
+            for saved_item in saved_items:
                 permalink = saved_item.permalink
                 self.permalinks.append(permalink)
 
@@ -32,15 +29,15 @@ class SavedToBookmark:
         time.sleep(10)
 
         try:
-            # Make sure the current window is active
+
             self.driver.switch_to.window(self.driver.current_window_handle)
             self.driver.maximize_window()
 
-            # Use pyautogui to trigger the bookmark hotkey
+
             pyautogui.hotkey('ctrl', 'd')
-            time.sleep(1)  # Let the bookmark window appear
+            time.sleep(1)
             pyautogui.press('enter')
-            time.sleep(5)  # Give time for the action to complete
+            time.sleep(5)
 
         except Exception as e:
             print(f"Failed to bookmark the page: {e}")

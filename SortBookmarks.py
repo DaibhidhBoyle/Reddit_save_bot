@@ -1,14 +1,10 @@
-import sqlite3
-import praw
-
-
 class RedditBookmarkManager:
-    def __init__(self, db_path, reddit_instance):
+    def __init__(self, conn, cursor, reddit):
 
-        self.conn = sqlite3.connect(db_path)
-        self.cursor = self.conn.cursor()
-        self.reddit = reddit_instance
-        self.bookmarks_dict = []
+        self.conn = conn
+        self.cursor = cursor
+        self.reddit = reddit
+        self.bookmarks = []
         self.count = 0
 
     def fetch_subreddit_for_bookmarks(self, bookmarks_dict):
@@ -17,6 +13,7 @@ class RedditBookmarkManager:
             try:
                 search_results = self.reddit.submission(url=bookmark['url'])
                 sub_name = search_results.subreddit.display_name
+                print(sub_name)
                 bookmark['sub'] = sub_name
 
                 self.count += 1
@@ -24,7 +21,7 @@ class RedditBookmarkManager:
             except Exception as e:
                 print(f"{bookmark['url']} is not available: {e}")
 
-        self.bookmarks_dict = bookmarks_dict
+        self.bookmarks = bookmarks_dict
 
     def find_or_create_reddit_folder(self):
         find_reddit_folder_query = "SELECT id FROM moz_bookmarks WHERE title = 'reddit' and type = 2"
@@ -37,7 +34,7 @@ class RedditBookmarkManager:
             print("Reddit folder not found.")
             return None
 
-    def organize_bookmarks(self):
+    def organise_bookmarks(self):
 
         reddit_folder_id = self.find_or_create_reddit_folder()
 
@@ -45,7 +42,7 @@ class RedditBookmarkManager:
             print("Reddit folder does not exist. Exiting.")
             return
 
-        for bookmark in self.bookmarks_dict:
+        for bookmark in self.bookmarks:
             try:
                 # Check if the subreddit folder already exists
                 sub_folder_query = f"""
@@ -76,6 +73,7 @@ class RedditBookmarkManager:
 
     def create_subreddit_folder(self, subreddit, reddit_folder_id):
         # Create a new folder for the subreddit
+        print(subreddit)
         try:
             create_folder_query = f"""
                 INSERT INTO moz_bookmarks (type, fk, parent, position, title, dateAdded, lastModified, guid, syncStatus)
@@ -111,5 +109,5 @@ class RedditBookmarkManager:
                 return None
 
         except Exception as e:
-            print(f"Error creating subreddit folder: {e}")
+            print("folder was not created as it exists or there was an error")
             return None

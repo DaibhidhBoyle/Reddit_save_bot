@@ -1,10 +1,8 @@
-import sqlite3
+class GetUnsortedBookmarks:
+    def __init__(self, conn, cursor):
 
-class getUnsortedBookmarks:
-    def __init__(self, db_path):
-
-        self.conn = sqlite3.connect(db_path)
-        self.cursor = self.conn.cursor()
+        self.conn = conn
+        self.cursor = cursor
 
     def getMostRecentEntryParent(self):
         most_recent_parent_id_query = """

@@ -3,15 +3,16 @@ import Secrets
 import praw
 
 from selenium import webdriver
-
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.firefox.options import Options
 
-class PrawHandler:
-    def __init__(self):
+class SetupPraw:
+    def __init__(self, profile_path):
+        self.profile_path = profile_path
         self.reddit = self.setupPraw()
-        self.driver = self.setupDriver(*self.pathing())
-        self.saved_items = self.getSaved(reddit)
+        self.service, self.options = self.pathing()
+        self.driver = self.setupDriver()
+        self.saved_items = self.getSaved()
 
     def setupPraw(self):
         return praw.Reddit(
@@ -23,18 +24,23 @@ class PrawHandler:
         )
 
     def pathing(self):
-        profile_path = r"C:\Users\Daibhidh\AppData\Roaming\Mozilla\Firefox\Profiles\wpg9fojf.default-release-1662941926469"
 
         options = Options()
         options.add_argument(f"-profile")
-        options.add_argument(profile_path)
+        options.add_argument(self.profile_path)
 
         service = FirefoxService()
 
-        return profile_path, options, service
+        return service, options
 
-    def setupDriver(self, profile_path, options, service):
-        return webdriver.Firefox(service=service, options=options)
+    def setupDriver(self):
 
-    def getSaved(self, reddit):
-        return list(reddit.user.me().saved(limit=None))
+        try:
+            driver = webdriver.Firefox(service=self.service, options=self.options)
+            print("WebDriver initialized successfully!")
+            return driver
+        except Exception as e:
+            print(f"Error initializing WebDriver: {e}")
+
+    def getSaved(self):
+        return list(self.reddit.user.me().saved(limit=None))
