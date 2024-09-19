@@ -50,6 +50,7 @@ class RedditSavedToBookmarks:
             bookmark_dict = unsorted_bookmarks.fetch_reddit_bookmarks(new_bookmarks_folder)
 
             sort_bookmarks = RedditBookmarkManager(bookmarkSQL.conn, bookmarkSQL.cursor, praw.reddit)
+
             #put each new reddit bookmark into a folder with it's appropriate sub name; if it does not exist then create one
             sort_bookmarks.fetch_subreddit_for_bookmarks(bookmark_dict)
             sort_bookmarks.organise_bookmarks()

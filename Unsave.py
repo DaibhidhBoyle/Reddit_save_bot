@@ -7,17 +7,16 @@ class RedditUnsaver:
 
     def unsave_matching_items(self):
 
-        for url in self.found_urls:
-            print("poop train" + " " + url)
-
 
         for saved_item in self.saved_items:
 
             permalink = saved_item.permalink
 
+            #changes permalinks so the special characters are encoded in the format firefox sql saves them
             decoded_permalink = quote(permalink, safe=':/')
 
             if any(decoded_permalink in url for url in self.found_urls):
 
+                #removes item from reddit saves
                 saved_item.unsave()
                 print(f"Unsaved item: {saved_item.permalink}")

@@ -43,4 +43,5 @@ class SetupPraw:
             print(f"Error initializing WebDriver: {e}")
 
     def getSaved(self):
+        #grabs all post in profile's reddit saves
         return list(self.reddit.user.me().saved(limit=None))

@@ -11,9 +11,9 @@ class RedditBookmarkManager:
 
         for bookmark in bookmarks_dict:
             try:
+                #repull reddit information for the url
                 search_results = self.reddit.submission(url=bookmark['url'])
                 sub_name = search_results.subreddit.display_name
-                print(sub_name)
                 bookmark['sub'] = sub_name
 
                 self.count += 1
@@ -23,7 +23,7 @@ class RedditBookmarkManager:
 
         self.bookmarks = bookmarks_dict
 
-    def find_or_create_reddit_folder(self):
+    def find_reddit_folder(self):
         find_reddit_folder_query = "SELECT id FROM moz_bookmarks WHERE title = 'reddit' and type = 2"
         self.cursor.execute(find_reddit_folder_query)
         reddit_folder = self.cursor.fetchall()
@@ -36,7 +36,7 @@ class RedditBookmarkManager:
 
     def organise_bookmarks(self):
 
-        reddit_folder_id = self.find_or_create_reddit_folder()
+        reddit_folder_id = self.find_reddit_folder()
 
         if reddit_folder_id is None:
             print("Reddit folder does not exist. Exiting.")
